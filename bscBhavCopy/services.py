@@ -24,6 +24,11 @@ class BhavCopyOperationService():
 
             # csv.DictReader which is used for csv file into the Python dict
             csv_reader = csv.DictReader(file_wrapper)
+            
+            required_headers = {"TradDt", "BizDt", "FinInstrmNm", "OpnPric", "HghPric", "LwPric", "ClsPric"}
+            if not required_headers.issubset(csv_reader.fieldnames):
+                raise ValueError("Missing required headers")
+        
             for row in csv_reader:
                 record = BhavcopyRecord(
                     trad_date = datetime.strptime(row.get('TradDt', ''), '%Y-%m-%d').date() if row.get('TradDt')  else None,
@@ -128,7 +133,7 @@ class BhavCopyOperationService():
                 filter_kwargs["name__icontains"] = search
 
             queryset = BhavcopyRecord.objects.filter(**filter_kwargs).order_by('-id')
-            
+
             # StringIO it create in-memory file like object means it avoid writing on disk 
             csv_file = StringIO()
 
