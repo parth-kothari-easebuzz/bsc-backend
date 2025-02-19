@@ -14,7 +14,7 @@ urlpatterns = [
     })),
    
     path('get-csv-record/', BhavCopyOperationController.as_view({
-        'get': 'get_bhav_copy_records'  # FIXED: using the correct method name
+        'get': 'get_bhav_copy_records'
     })),
     path('update-csv-record/<int:id>/', BhavCopyOperationController.as_view({
         'put':'update_bhav_copy_record'

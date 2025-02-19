@@ -44,25 +44,19 @@ class BhavCopyOperationService():
             with transaction.atomic():
                 BhavcopyRecord.objects.bulk_create(records)
                 
-            return Response({"message": f"{len(records)} records successfully saved."}, status=status.HTTP_201_CREATED)
+            return {"message": f"{len(records)} records successfully saved.","status" : status.HTTP_201_CREATED}
     
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return {"message": str(e), "status" : status.HTTP_500_INTERNAL_SERVER_ERROR}
         
-    def get_file_records(self, request=None, id=None):
+    def get_file_records(self, search, page_size, page_number, id=None):
         try:
             if id:
                 bhavcopy_record = BhavcopyRecord.objects.get(id = id, is_deleted = False)
                 serializer = BhavcopyRecordSerializer(bhavcopy_record)
-                return Response(serializer.data)
+                return {"message" : serializer.data, "status": status.HTTP_200_OK}
             
             else:
-                # search = request.GET.get('search', '').strip()
-                #  validate with dataclass 
-                search = request.GET.get('search', '').strip() 
-                page_size = int(request.GET.get('size', 10))
-                page_number = int(request.GET.get('page', 1))
-                
                 # key word args
                 filter_kwargs = {"is_deleted": False }
                 
@@ -78,55 +72,53 @@ class BhavCopyOperationService():
                     paginated_queryset = queryset[offset:limit]
                     if(paginated_queryset):
                         serializer = BhavcopyRecordSerializer(paginated_queryset, many=True)
-                        return Response({
+                        return { "message" :{
                             "total" : total_records,
                             "page" : page_number,
                             "size" : page_size,
                             "total_pages" : (total_records + page_size - 1) // page_size,
-                            "data" : serializer.data                    
-                        })
+                            "data" : serializer.data},
+                            "status" : status.HTTP_200_OK
+                        }
                             
                     else:
-                        return Response({"message": "No Records Found"}, status=status.HTTP_404_NOT_FOUND)
+                        return {"message": "No Records Found", "status" : status.HTTP_404_NOT_FOUND}
 
                 except Exception as e:
-                    return Response({"message": f"Something went wrong: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    return {"message": f"Something went wrong: {str(e)}", "status":status.HTTP_500_INTERNAL_SERVER_ERROR}
         except Exception as e:
             return Response({"message": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
-    def update_record(self,request,id):
+    def update_record(self,data,id):
         try:
             try:
                 obj = BhavcopyRecord.objects.get(id = id, is_deleted = False)
             except BhavcopyRecord.DoesNotExist:
-                return Response(f"message: No record found for requested id {id}", status=status.HTTP_404_NOT_FOUND)
+                return {"message": f"No record found for requested id {id}", "status" : status.HTTP_404_NOT_FOUND}
             
-            data = request.data
             serializer = BhavcopyRecordSerializer(obj, data = data, partial = True)
             if(serializer.is_valid()):
                 serializer.save()
-                return Response({"message": "Record updated successfully."})
+                return {"message": "Record updated successfully.", "status" : status.HTTP_200_OK}
             else:
-                return Response({"message": "Something went wrong"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return {"message": "Something went wrong", "status":status.HTTP_500_INTERNAL_SERVER_ERROR}
             
         except Exception as e:
-            return Response({"message": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return {"message": f"{str(e)}","status":status.HTTP_500_INTERNAL_SERVER_ERROR}
 
     def delete_record(self,id):
         try:
             obj = BhavcopyRecord.objects.get(id=id, is_deleted=False)
-            obj.is_deleted = True  
+            obj.is_deleted = True
             obj.save()
-            return Response({"message": "Record deleted successfully."}, status=status.HTTP_200_OK)
+            return {"message": "Record deleted successfully.", "status" : status.HTTP_200_OK}
 
         except BhavcopyRecord.DoesNotExist:
-            return Response({"message": f"No record found for requested id {id}"}, status=status.HTTP_404_NOT_FOUND)
+            return {"message": f"No record found for requested id {id}", "status":status.HTTP_404_NOT_FOUND}
         
-    def export_sheet_by_search_result(self, request):        
+    def export_sheet_by_search_result(self, search):        
         try:
-            search = request.GET.get('search', '').strip()
-            
             filter_kwargs = {"is_deleted": False }
             
             if search:
@@ -159,20 +151,20 @@ class BhavCopyOperationService():
             # Reset fill pointer to the start
             csv_file.seek(0)
             
-            # Create HTTPResponse with text/csv content 
-            response = HttpResponse(csv_file, content_type='text/csv')
+            return csv_file
+            # # Create HTTPResponse with text/csv content 
+            # response = HttpResponse(csv_file, content_type='text/csv')
 
-            # Inspect -> Header triggered for download the file otherwise it can lead some issue while download file
-            # Content-Disposition -> used for how to handle the response content
-            # attachment is says that download file instead of showing result
-            response['Content-Disposition'] = 'attachment; filename=search_results.csv'
-            return response
+            # # Inspect -> Header triggered for download the file otherwise it can lead some issue while download file
+            # # Content-Disposition -> used for how to handle the response content
+            # # attachment is says that download file instead of showing result
+            # response['Content-Disposition'] = 'attachment; filename=search_results.csv'
+            # return response
         except Exception as e:
-            return Response({"message": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return {"message": f"{str(e)}","status":status.HTTP_500_INTERNAL_SERVER_ERROR}
         
-    def download_sheet_by_date(self, request):
+    def download_sheet_by_date(self, date):
         try:
-            date = request.GET.get('date')
             if not date:
                 return Response({"message": "Please provide a valid date in YYYYMMDD format."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -186,23 +178,19 @@ class BhavCopyOperationService():
 
             try:
 
-                # requests.get- fetch a csv file from the url
+                
+                # Fetch the CSV file from the URL
                 response = requests.get(url, headers=headers)
 
-                # raise_for_status: if request is successful then 200 o.w throws 404
+                # Raise an error for non-200 responses
                 response.raise_for_status()
 
-                # HttpResponse(response.content, content_type='text/csv') return downloaded file as resposnse
-                csv_response = HttpResponse(response.content, content_type='text/csv')
-
-                # set Content-Disposition force a downloaded with the name BhavCopy_20250212
-                csv_response['Content-Disposition'] = f'attachment; filename="BhavCopy_{date}.csv"'
-
-                return csv_response
+                # Return CSV content as a string instead of HttpResponse
+                return {"csv_data": response.content.decode('utf-8')}  
 
             except requests.RequestException as e:
-                return Response({"message": f"Error fetching BhavCopy: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+                return {"error": f"Error fetching BhavCopy: {str(e)}"}
+
         except Exception as e:
-            return Response({"message": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return {"error": str(e)}
         
