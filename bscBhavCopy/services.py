@@ -87,7 +87,7 @@ class BhavCopyOperationService():
                 except Exception as e:
                     return {"message": f"Something went wrong: {str(e)}", "status":status.HTTP_500_INTERNAL_SERVER_ERROR}
         except Exception as e:
-            return Response({"message": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return {"message": f"{str(e)}", "status":status.HTTP_500_INTERNAL_SERVER_ERROR}
     
 
     def update_record(self,data,id):
